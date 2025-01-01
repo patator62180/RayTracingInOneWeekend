@@ -4,6 +4,7 @@
 #include "rtweekend.h"
 #include "hittable.h"
 #include "material.h"
+#include <thread>
 
 class camera {
     public:
@@ -19,21 +20,44 @@ class camera {
 
     double defocus_angle = 10.0;
     double focus_dist = 3.4;
+    std::vector<color> color_buffer;
+    int lines_computed;
 
-    void render(const hittable& world){
-        initialize();
-        std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
-
-        for(int j = 0; j < image_height; ++j){
-            std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
+    void render_section(const hittable& world, int start, int end) {
+        for(int j = start; j < end; ++j){
             for (int i = 0; i < image_width; ++i){
                 color pixel_color(0,0,0);
                 for (int sample = 0; sample < samples_per_pixel; ++sample ) {
                     ray ray = get_ray(i, j);
                     pixel_color += ray_color(ray, max_depth, world);
                 }
-                write_color(std::cout, pixel_samples_scale * pixel_color);
+                color_buffer[image_width * j + i] = pixel_samples_scale * pixel_color;
             }
+                ++lines_computed;
+                std::clog << "\rProgress: " << lines_computed << " / " << image_height << " ("<< 100*(lines_computed / double(image_height)) << " %)" << std::endl;
+        }
+    }
+
+    void render(const hittable& world){
+        initialize();
+        std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
+
+        int num_threads = std::thread::hardware_concurrency();
+        int section_height = image_height / num_threads;
+        std::vector<std::thread> threads;
+
+        for (int t = 0; t < num_threads; ++t) {
+            int start = t * section_height;
+            int end = (t == num_threads - 1) ? image_height : start + section_height;
+            threads.push_back(std::thread(&camera::render_section, this, std::ref(world), start, end));
+        }
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        for(color& c : color_buffer) {
+            write_color(std::cout, c);
         }
 
         std::clog << "\rDone.                 \n";
@@ -78,6 +102,9 @@ class camera {
         auto defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle / 2));
         defocus_disk_u = u * defocus_radius;
         defocus_disk_v = v * defocus_radius;
+
+        color_buffer.resize(image_width * image_height);
+        lines_computed = 0;
     }
 
     color ray_color(const ray& r, int depth, const hittable& world) const {
