@@ -5,6 +5,7 @@
 #include "hittable.h"
 #include "material.h"
 #include <thread>
+#include <chrono>
 
 class camera {
     public:
@@ -38,7 +39,8 @@ class camera {
         }
     }
 
-    void render(const hittable& world){
+    void render(const hittable& world){        
+        auto start_time = std::chrono::high_resolution_clock::now();        
         initialize();
         std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
 
@@ -60,7 +62,9 @@ class camera {
             write_color(std::cout, c);
         }
 
-        std::clog << "\rDone.                 \n";
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+        std::clog << "\rDone in " << duration << " seconds" << std::endl;
     }
 
     private:
