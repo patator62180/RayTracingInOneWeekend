@@ -103,9 +103,8 @@ inline vec3 unit_vector(const vec3& v) {
 }
 
 inline vec3 random_unit_vector() {
-    auto v = vec3::random();
-    auto ls = v.length_squared();
-    return vec3(v.x()/ls, v.y()/ls, v.z()/ls); 
+    auto p = vec3::random(-1,1);
+    return p / p.length();
 }
 
 inline vec3 random_on_hemisphere(const vec3& normal) {            
@@ -130,7 +129,7 @@ inline vec3 refract(const vec3& uv, const vec3& n, double etai_over_etat) {
 
 inline vec3 random_in_unit_disk() {
     vec3 p = vec3(random_double(-1, 1), random_double(-1, 1), 0);
-    return p / p.length_squared();
+    return p / p.length();
 }
 
 #endif

@@ -13,6 +13,7 @@ class camera {
         int image_width = 400;
         int samples_per_pixel = 1000;
         int max_depth = 10;
+        color background;
 
         double vfov = 20;
         point3 lookfrom = point3(-2,2,1);
@@ -112,24 +113,24 @@ class camera {
         }
 
         color ray_color(const ray& r, int depth, const hittable& world) const {
-            if(depth == 0)
+            if(depth <= 0)
                 return color();
 
             hit_record rec;
 
-            if (world.hit(r, interval(0.001, infinity), rec)) {
-                ray scattered;
-                color attenuation;
-                if(rec.mat->scatter(r, rec, attenuation, scattered))
-                    return attenuation * ray_color(scattered, depth-1, world);
-                return color();
-            } 
-            
-            color a = color(1,1,1);
-            color b = color(0.5,0.7,1.0);
-            vec3 unit_direction = unit_vector(r.direction());
-            auto t = 0.5*(unit_direction.y() + 1.0);
-            return (1.0-t)*a + t*b;
+            if(!world.hit(r, interval(0.001, infinity), rec))
+                return background;
+
+            ray scattered;
+            color attenuation;
+            color color_from_emission = rec.mat->emitted(rec.u, rec.v, rec.p);
+
+            if(!rec.mat->scatter(r, rec, attenuation, scattered))
+                return color_from_emission;
+
+            color color_from_scatter = attenuation * ray_color( scattered, depth-1, world);
+
+            return color_from_emission + color_from_scatter;
         }
 
         ray get_ray(int i, int j) const {
